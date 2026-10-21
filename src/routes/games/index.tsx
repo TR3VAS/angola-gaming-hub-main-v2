@@ -9,11 +9,10 @@ import {
   Flame,
   Trophy,
   Zap,
-  Star,
   ArrowRight,
 } from "lucide-react";
 import { Layout } from "@/components/site/Layout";
-import { games, players, tournaments, formatKz, type Game } from "@/lib/mock-data";
+import { games, tournaments, formatKz, type Game } from "@/lib/mock-data";
 
 export const Route = createFileRoute("/games/")({
   component: GamesIndex,
@@ -23,57 +22,24 @@ export const Route = createFileRoute("/games/")({
       {
         name: "description",
         content:
-          "Explora todos os jogos competitivos com suporte oficial em Angola: Fortnite, EA Sports FC, Free Fire, Call of Duty, Valorant e PUBG. Rankings, torneios e premiações em Kz.",
+          "Explora os 4 jogos competitivos com suporte oficial em Angola: Fortnite, Free Fire, FIFA (EA Sports FC) e Valorant. Rankings, estatísticas e torneios.",
       },
     ],
   }),
 });
 
-// ─── Game cover visuals per slug ─────────────────────────────────────────────
-const GAME_COVERS: Record<string, { gradient: string; label: string }> = {
-  fortnite: {
-    gradient: "from-sky-500 via-blue-600 to-indigo-900",
-    label: "FORTNITE",
-  },
-  "ea-sports-fc": {
-    gradient: "from-emerald-400 via-green-600 to-emerald-900",
-    label: "EA SPORTS FC",
-  },
-  "free-fire": {
-    gradient: "from-orange-500 via-red-600 to-rose-900",
-    label: "FREE FIRE",
-  },
-  "call-of-duty": {
-    gradient: "from-amber-400 via-yellow-600 to-amber-900",
-    label: "CALL OF DUTY",
-  },
-  valorant: {
-    gradient: "from-rose-400 via-red-600 to-red-900",
-    label: "VALORANT",
-  },
-  pubg: {
-    gradient: "from-slate-400 via-sky-700 to-slate-900",
-    label: "PUBG",
-  },
-};
-
-// ─── Live ticker data ─────────────────────────────────────────────────────────
+// Live ticker stats for the 4 official games
 const LIVE_COUNTS = [
   { name: "Fortnite", count: "612", trend: "+12.0%", up: true },
   { name: "Free Fire", count: "540", trend: "+8.4%", up: true },
-  { name: "EA Sports FC", count: "388", trend: "-3.1%", up: false },
-  { name: "Call of Duty", count: "275", trend: "+14.0%", up: true },
-  { name: "Valorant", count: "164", trend: "+22.0%", up: true },
-  { name: "PUBG", count: "121", trend: "-2.0%", up: false },
+  { name: "EA Sports FC / FIFA", count: "388", trend: "-3.1%", up: false },
+  { name: "Valorant", count: "480", trend: "+22.0%", up: true },
 ];
 
 type SortKey = "POPULARIDADE" | "NOME" | "JOGADORES" | "TORNEIOS";
 const SORT_OPTIONS: SortKey[] = ["POPULARIDADE", "NOME", "JOGADORES", "TORNEIOS"];
 
-const GENRE_FILTERS = ["TODOS", "Battle Royale", "FPS", "Desporto", "Mobile"];
-
-const NEW_GAMES = new Set<string>(["valorant"]);
-const FEATURED_GAMES = new Set<string>(["fortnite"]);
+const GENRE_FILTERS = ["TODOS", "Battle Royale", "Desporto", "FPS"];
 
 function sortGames(list: Game[], key: SortKey): Game[] {
   switch (key) {
@@ -84,120 +50,85 @@ function sortGames(list: Game[], key: SortKey): Game[] {
     case "TORNEIOS":
       return [...list].sort((a, b) => b.tournaments - a.tournaments);
     default:
-      return [...list].sort(
-        (a, b) =>
-          b.players * 2 + b.tournaments * 10 - (a.players * 2 + a.tournaments * 10),
-      );
+      // Keep original order from screenshot if default popularity
+      return list;
   }
 }
 
-// ─── Individual cover card component ─────────────────────────────────────────
-function GameCoverCard({ game, rank }: { game: Game; rank: number }) {
-  const cover = GAME_COVERS[game.slug] ?? {
-    gradient: "from-slate-700 to-slate-900",
-    label: game.name.toUpperCase(),
-  };
+// ─── Individual Tracker-style Game Cover Card ────────────────────────────────
+function GameCoverCard({ game }: { game: Game }) {
+  const [imgError, setImgError] = useState(false);
   const activeTournaments = tournaments.filter(
     (t) => t.game === game.slug && t.status !== "FINISHED",
   );
-  const isNew = NEW_GAMES.has(game.slug);
-  const isFeatured = FEATURED_GAMES.has(game.slug);
 
   return (
     <Link
       to="/games/$slug"
       params={{ slug: game.slug }}
-      className="group relative flex flex-col cursor-pointer outline-none"
+      className="group relative flex flex-col cursor-pointer outline-none select-none"
     >
-      {/* Cover */}
-      <div className="relative overflow-hidden rounded-xl aspect-[3/4] bg-slate-900 ring-1 ring-white/10 transition-all duration-300 group-hover:ring-2 group-hover:ring-gold/60 group-hover:shadow-[0_0_24px_rgba(234,179,8,0.22)] group-focus-visible:ring-2 group-focus-visible:ring-gold/60">
-        <div
-          className={`absolute inset-0 bg-gradient-to-br ${cover.gradient} opacity-90 transition-opacity duration-300 group-hover:opacity-100`}
-        />
-
-        {/* Game name label */}
-        <div className="absolute inset-0 flex items-center justify-center p-4">
-          <span
-            className="text-center font-black text-white drop-shadow-lg leading-tight tracking-tight"
-            style={{
-              fontSize: "clamp(0.875rem, 2.5vw, 1.5rem)",
-              textShadow: "0 2px 16px rgba(0,0,0,0.7)",
-            }}
+      {/* Cover Image Container */}
+      <div
+        className={`relative overflow-hidden rounded-xl aspect-[3/4] bg-[#121520] transition-all duration-200 group-hover:-translate-y-1 group-focus-visible:ring-2 group-focus-visible:ring-gold ${
+          game.isNew
+            ? "ring-1 ring-red-500/70 shadow-[0_0_15px_rgba(239,68,68,0.25)] group-hover:ring-red-400 group-hover:shadow-[0_0_24px_rgba(239,68,68,0.45)]"
+            : "ring-1 ring-white/10 group-hover:ring-1 group-hover:ring-white/40 group-hover:shadow-[0_8px_30px_rgba(0,0,0,0.8)]"
+        }`}
+      >
+        {game.coverUrl && !imgError ? (
+          <img
+            src={game.coverUrl}
+            alt={game.name}
+            onError={() => setImgError(true)}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+          />
+        ) : (
+          <div
+            className={`absolute inset-0 flex flex-col items-center justify-center p-3 text-center bg-gradient-to-br ${game.accent} to-slate-950`}
           >
-            {cover.label}
-          </span>
-        </div>
-
-        {/* Bottom fade */}
-        <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/80 to-transparent" />
-
-        {/* Top-right badges */}
-        <div className="absolute top-2 right-2 flex flex-col items-end gap-1">
-          {isNew && (
-            <span className="rounded-sm bg-red-600 px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-white shadow">
-              NOVO!
+            <span className="font-black text-white text-base tracking-tight leading-tight uppercase">
+              {game.name}
             </span>
-          )}
-          {isFeatured && (
-            <span className="flex items-center gap-1 rounded-sm bg-gold px-1.5 py-0.5 text-[9px] font-black uppercase tracking-widest text-slate-950 shadow">
-              <Flame className="size-2.5" />
-              TOP
+            <span className="mt-1 text-[10px] text-muted-foreground uppercase">{game.genre}</span>
+          </div>
+        )}
+
+        {/* Top-right "NEW!" Badge */}
+        {game.isNew && (
+          <div className="absolute top-2 right-2 z-10">
+            <span className="rounded-[4px] bg-[#e11d48] px-1.5 py-0.5 text-[9px] font-black uppercase tracking-wider text-white shadow-md">
+              NEW!
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
-        {/* Rank badge */}
-        <div className="absolute top-2 left-2">
-          <span className="flex size-6 items-center justify-center rounded-full bg-black/60 text-[10px] font-black text-white backdrop-blur-sm">
-            {rank}
-          </span>
-        </div>
-
-        {/* Live tournament strip */}
+        {/* Active tournament indicator */}
         {activeTournaments.length > 0 && (
-          <div className="absolute bottom-2 left-2 right-2">
-            <div className="flex items-center gap-1.5 rounded-lg bg-black/70 px-2 py-1 backdrop-blur-sm">
+          <div className="absolute bottom-2 left-2 right-2 z-10">
+            <div className="flex items-center gap-1.5 rounded-md bg-black/80 px-2 py-0.5 backdrop-blur-sm">
               <span className="size-1.5 rounded-full bg-primary animate-pulse" />
-              <span className="truncate text-[9px] font-bold uppercase tracking-wider text-primary">
-                {activeTournaments.length} ativo(s)
+              <span className="truncate text-[9px] font-bold uppercase text-primary">
+                {activeTournaments.length} torneio(s)
               </span>
             </div>
           </div>
         )}
       </div>
 
-      {/* Info below cover */}
-      <div className="mt-3 px-0.5">
-        <h3 className="truncate text-sm font-bold text-white transition-colors group-hover:text-gold">
+      {/* Game Name below Card */}
+      <div className="mt-2.5 px-0.5">
+        <h3 className="truncate text-sm font-semibold text-white/95 transition-colors group-hover:text-white">
           {game.name}
         </h3>
-        <p className="mt-0.5 text-[11px] text-muted-foreground">{game.genre}</p>
-
-        <div className="mt-2 flex items-center gap-3">
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Users className="size-3" />
-            <span className="font-semibold text-white">{game.players}</span> atletas
-          </span>
-          <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-            <Trophy className="size-3" />
-            <span className="font-semibold text-white">{game.tournaments}</span>
-          </span>
-        </div>
-
-        {activeTournaments.length > 0 && activeTournaments[0] && (
-          <div className="mt-1.5 flex items-center gap-1">
-            <Zap className="size-3 text-gold" />
-            <span className="text-[10px] font-bold text-gold">
-              {formatKz(activeTournaments[0].prize)} em disputa
-            </span>
-          </div>
-        )}
+        <p className="mt-0.5 truncate text-[11px] text-neutral-400">{game.genre}</p>
       </div>
     </Link>
   );
 }
 
-// ─── Page component ───────────────────────────────────────────────────────────
+// ─── Main Games Index Component ──────────────────────────────────────────────
 function GamesIndex() {
   const [search, setSearch] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("TODOS");
@@ -217,25 +148,11 @@ function GamesIndex() {
 
     const byGenre = bySearch.filter((g) => {
       if (selectedGenre === "TODOS") return true;
-      if (selectedGenre === "Mobile") return g.genre.toLowerCase().includes("mobile");
-      if (selectedGenre === "FPS")
-        return (
-          g.genre.toLowerCase().includes("fps") &&
-          !g.genre.toLowerCase().includes("mobile")
-        );
-      if (selectedGenre === "Battle Royale")
-        return (
-          g.genre.toLowerCase().includes("battle royale") &&
-          !g.genre.toLowerCase().includes("mobile")
-        );
       return g.genre.toLowerCase().includes(selectedGenre.toLowerCase());
     });
 
     return sortGames(byGenre, sortKey);
   }, [search, selectedGenre, sortKey]);
-
-  const featured = filteredGames.filter((g) => FEATURED_GAMES.has(g.slug));
-  const rest = filteredGames.filter((g) => !FEATURED_GAMES.has(g.slug));
 
   return (
     <Layout>
@@ -271,56 +188,35 @@ function GamesIndex() {
         </div>
       </div>
 
-      {/* ── Filter & search bar ── */}
-      <div className="sticky top-16 z-40 border-b border-white/[0.07] bg-[#07090e]/95 backdrop-blur-xl">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="flex flex-wrap items-center gap-3 py-3">
-            <div className="flex items-baseline gap-2 mr-2 shrink-0">
-              <h1 className="text-sm font-black uppercase tracking-widest text-white">
-                TODOS OS JOGOS
+      {/* ── Header Bar: ALL GAMES & Sort by Popularity ── */}
+      <div className="border-b border-white/[0.07] bg-[#07090e]">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            {/* Title & Dropdown like screenshot */}
+            <div className="flex items-center gap-4">
+              <h1 className="text-2xl font-black uppercase tracking-wide text-white sm:text-3xl">
+                ALL GAMES
               </h1>
-              <span className="text-xs text-muted-foreground">({filteredGames.length})</span>
-            </div>
 
-            <div className="flex flex-wrap items-center gap-1.5 flex-1">
-              {GENRE_FILTERS.map((genre) => (
-                <button
-                  key={genre}
-                  onClick={() => setSelectedGenre(genre)}
-                  className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
-                    selectedGenre === genre
-                      ? "bg-white text-slate-950"
-                      : "border border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/25 hover:text-white"
-                  }`}
-                >
-                  {genre}
-                </button>
-              ))}
-            </div>
-
-            <div className="flex items-center gap-2 ml-auto">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                <input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Pesquisar jogo..."
-                  className="w-44 rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground/60 outline-none transition focus:border-gold/50 focus:bg-white/[0.07] sm:w-52"
-                />
-              </div>
-
+              {/* Sort by dropdown */}
               <div className="relative">
                 <button
                   onClick={() => setShowSortMenu((v) => !v)}
-                  className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition hover:border-white/20 hover:text-white cursor-pointer whitespace-nowrap"
+                  className="flex items-center gap-1 text-sm font-semibold text-neutral-300 hover:text-white transition cursor-pointer"
                 >
-                  Ordenar por {sortKey.charAt(0) + sortKey.slice(1).toLowerCase()}
+                  <span>
+                    Sort by{" "}
+                    {sortKey === "POPULARIDADE"
+                      ? "Popularity"
+                      : sortKey.charAt(0) + sortKey.slice(1).toLowerCase()}
+                  </span>
                   <ChevronDown
-                    className={`size-3 transition-transform ${showSortMenu ? "rotate-180" : ""}`}
+                    className={`size-3.5 transition-transform ${showSortMenu ? "rotate-180" : ""}`}
                   />
                 </button>
+
                 {showSortMenu && (
-                  <div className="absolute right-0 top-full mt-1 z-50 w-48 rounded-xl border border-white/10 bg-[#0f1120] shadow-xl overflow-hidden">
+                  <div className="absolute left-0 top-full mt-2 z-50 w-44 rounded-xl border border-white/10 bg-[#0f1120] shadow-2xl overflow-hidden py-1">
                     {SORT_OPTIONS.map((opt) => (
                       <button
                         key={opt}
@@ -328,25 +224,54 @@ function GamesIndex() {
                           setSortKey(opt);
                           setShowSortMenu(false);
                         }}
-                        className={`w-full px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wider transition cursor-pointer ${
+                        className={`w-full px-4 py-2 text-left text-xs font-semibold transition cursor-pointer ${
                           sortKey === opt
                             ? "bg-gold/10 text-gold"
-                            : "text-muted-foreground hover:bg-white/[0.04] hover:text-white"
+                            : "text-neutral-300 hover:bg-white/[0.05] hover:text-white"
                         }`}
                       >
-                        {opt}
+                        {opt === "POPULARIDADE" ? "Popularity" : opt}
                       </button>
                     ))}
                   </div>
                 )}
               </div>
             </div>
+
+            {/* Filter buttons & Search */}
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex flex-wrap items-center gap-1">
+                {GENRE_FILTERS.map((genre) => (
+                  <button
+                    key={genre}
+                    onClick={() => setSelectedGenre(genre)}
+                    className={`rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider transition-all cursor-pointer whitespace-nowrap ${
+                      selectedGenre === genre
+                        ? "bg-white text-slate-950"
+                        : "border border-white/10 bg-white/[0.03] text-muted-foreground hover:border-white/25 hover:text-white"
+                    }`}
+                  >
+                    {genre}
+                  </button>
+                ))}
+              </div>
+
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                <input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="Pesquisar jogo..."
+                  className="w-40 rounded-lg border border-white/10 bg-white/[0.04] py-1.5 pl-8 pr-3 text-[11px] text-foreground placeholder:text-muted-foreground/60 outline-none transition focus:border-gold/50 focus:bg-white/[0.07] sm:w-48"
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* ── Games section ── */}
-      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6">
+      {/* ── Games Grid ── */}
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6">
         {filteredGames.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-24 text-center">
             <Search className="size-12 text-muted-foreground/30 mb-4" />
@@ -365,113 +290,11 @@ function GamesIndex() {
             </button>
           </div>
         ) : (
-          <>
-            {/* Featured hero card */}
-            {featured.map((game) => {
-              const cover = GAME_COVERS[game.slug] ?? {
-                gradient: "from-slate-700 to-slate-900",
-                label: game.name.toUpperCase(),
-              };
-              const activeTournaments = tournaments.filter(
-                (t) => t.game === game.slug && t.status !== "FINISHED",
-              );
-              const topPlayer = players.filter((p) => p.game === game.slug)[0];
-
-              return (
-                <Link
-                  key={game.slug}
-                  to="/games/$slug"
-                  params={{ slug: game.slug }}
-                  className="group relative mb-8 flex min-h-[200px] overflow-hidden rounded-2xl ring-1 ring-white/10 transition-all duration-300 hover:ring-2 hover:ring-gold/50 hover:shadow-[0_0_40px_rgba(234,179,8,0.15)] cursor-pointer outline-none sm:min-h-[240px]"
-                >
-                  <div
-                    className={`absolute inset-0 bg-gradient-to-br ${cover.gradient} opacity-80`}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent" />
-
-                  <div className="relative z-10 flex flex-col justify-between p-6 sm:p-8 md:p-10 w-full md:w-3/5">
-                    <div>
-                      <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <span className="flex items-center gap-1.5 rounded-full border border-gold/40 bg-gold/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gold">
-                          <Flame className="size-3.5 animate-pulse" />
-                          Jogo em Destaque
-                        </span>
-                        <span className="rounded-full bg-primary/20 border border-primary/40 px-2.5 py-0.5 text-[10px] font-bold uppercase text-primary">
-                          Oficial
-                        </span>
-                      </div>
-                      <h2 className="text-3xl font-black text-white drop-shadow-lg sm:text-4xl lg:text-5xl">
-                        {cover.label}
-                      </h2>
-                      <p className="mt-2 max-w-sm text-sm leading-relaxed text-white/70">
-                        {game.description}
-                      </p>
-                    </div>
-
-                    <div className="mt-6 flex flex-wrap items-center gap-4">
-                      <div className="flex items-center gap-2">
-                        <Users className="size-4 text-gold" />
-                        <div>
-                          <p className="text-[10px] uppercase text-white/60">Atletas</p>
-                          <p className="text-sm font-black text-white">{game.players}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Trophy className="size-4 text-gold" />
-                        <div>
-                          <p className="text-[10px] uppercase text-white/60">Torneios</p>
-                          <p className="text-sm font-black text-white">{game.tournaments}</p>
-                        </div>
-                      </div>
-                      {topPlayer && (
-                        <div className="flex items-center gap-2">
-                          <Star className="size-4 text-gold" />
-                          <div>
-                            <p className="text-[10px] uppercase text-white/60">Top 1</p>
-                            <p className="text-sm font-black text-white">{topPlayer.username}</p>
-                          </div>
-                        </div>
-                      )}
-                      {activeTournaments.length > 0 && activeTournaments[0] && (
-                        <div className="flex items-center gap-1.5 rounded-lg border border-primary/20 bg-primary/10 px-3 py-1.5">
-                          <span className="size-1.5 rounded-full bg-primary animate-ping" />
-                          <span className="text-[10px] font-black uppercase text-primary">
-                            {activeTournaments.length} ativo(s) &bull;{" "}
-                            {formatKz(activeTournaments[0].prize)}
-                          </span>
-                        </div>
-                      )}
-                      <span className="ml-auto flex items-center gap-1.5 rounded-xl bg-gold px-4 py-2 text-xs font-black text-slate-950 transition group-hover:bg-yellow-400">
-                        Ver Divisão <ArrowRight className="size-3.5" />
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              );
-            })}
-
-            {/* Grid of remaining games */}
-            {rest.length > 0 && (
-              <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {rest.map((game, i) => (
-                  <GameCoverCard
-                    key={game.slug}
-                    game={game}
-                    rank={i + 1 + featured.length}
-                  />
-                ))}
-              </div>
-            )}
-
-            {/* If featured is filtered out, show all in grid */}
-            {featured.length === 0 && filteredGames.length > 0 && (
-              <div className="grid gap-5 grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6">
-                {filteredGames.map((game, i) => (
-                  <GameCoverCard key={game.slug} game={game} rank={i + 1} />
-                ))}
-              </div>
-            )}
-          </>
+          <div className="grid grid-cols-2 gap-5 sm:grid-cols-2 md:grid-cols-4 lg:grid-cols-4 max-w-5xl mx-auto">
+            {filteredGames.map((game) => (
+              <GameCoverCard key={game.slug} game={game} />
+            ))}
+          </div>
         )}
       </section>
 

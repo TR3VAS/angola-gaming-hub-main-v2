@@ -15,6 +15,10 @@ import {
   Sparkles,
   Award,
   Zap,
+  Search,
+  Crosshair,
+  Swords,
+  Crown,
 } from "lucide-react";
 import { Layout } from "@/components/site/Layout";
 import {
@@ -27,6 +31,8 @@ import {
   formatDate,
   provinces,
   type Player,
+  type Team,
+  type Tournament,
 } from "@/lib/mock-data";
 import { RankMedal, StatusPill } from "@/components/site/ui-bits";
 
@@ -53,6 +59,9 @@ function GameSlugComponent() {
   const { slug } = Route.useParams();
   const game = games.find((g) => g.slug === slug);
 
+  // Search in Fortnite / Game Hub
+  const [query, setQuery] = useState("");
+
   // Ranking filters
   const [selectedFormat, setSelectedFormat] = useState<"TODOS" | "SOLO" | "DUOS" | "SQUADS">(
     "TODOS",
@@ -70,6 +79,69 @@ function GameSlugComponent() {
 
     return list.sort((a, b) => b.points - a.points);
   }, [game, selectedProvince]);
+
+  // Filtered Data for this specific game
+  const gameTournaments = useMemo(() => {
+    if (!game) return [];
+    return tournaments.filter((t) => t.game === game.slug);
+  }, [game]);
+
+  const activeTournaments = useMemo(() => {
+    return gameTournaments.filter((t) => t.status !== "FINISHED");
+  }, [gameTournaments]);
+
+  const gameTeams = useMemo(() => {
+    if (!game) return [];
+    return teams.filter((t) => t.games.includes(game.slug));
+  }, [game]);
+
+  const gameNews = useMemo(() => {
+    if (!game) return [];
+    return news.filter(
+      (n) =>
+        n.title.toLowerCase().includes(game.name.toLowerCase()) || n.category === "Competitivo",
+    );
+  }, [game]);
+
+  // Search Results for Fortnite / Game Hub (Players, Teams, Tournaments)
+  const searchResults = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q || !game) return { players: [], teams: [], tournaments: [] };
+
+    const matchedPlayers = players
+      .filter(
+        (p) =>
+          p.game === game.slug &&
+          (p.username.toLowerCase().includes(q) ||
+            p.name.toLowerCase().includes(q) ||
+            p.gamerTag.toLowerCase().includes(q)),
+      )
+      .slice(0, 4);
+
+    const matchedTeams = gameTeams
+      .filter((t) => t.name.toLowerCase().includes(q) || t.tag.toLowerCase().includes(q))
+      .slice(0, 3);
+
+    const matchedTournaments = gameTournaments
+      .filter((t) => t.name.toLowerCase().includes(q))
+      .slice(0, 3);
+
+    return {
+      players: matchedPlayers,
+      teams: matchedTeams,
+      tournaments: matchedTournaments,
+    };
+  }, [query, game, gameTeams, gameTournaments]);
+
+  // 2. Season Solo Win: player with highest kills / solo wins
+  const topSoloKillsPlayer = useMemo(() => {
+    return [...gamePlayers].sort((a, b) => b.wins - a.wins)[0] || gamePlayers[0];
+  }, [gamePlayers]);
+
+  // 3. Ranked Battle Royale: team with most points / titles in tournaments
+  const topTournamentTeam = useMemo(() => {
+    return [...gameTeams].sort((a, b) => b.titles - a.titles)[0] || gameTeams[0];
+  }, [gameTeams]);
 
   // If game is not found
   if (!game) {
@@ -95,28 +167,38 @@ function GameSlugComponent() {
     );
   }
 
-  // Filtered Data for this specific game
-  const gameTournaments = tournaments.filter((t) => t.game === game.slug);
-  const activeTournaments = gameTournaments.filter((t) => t.status !== "FINISHED");
-  const gameTeams = teams.filter((t) => t.games.includes(game.slug));
-  const gameNews = news.filter(
-    (n) => n.title.toLowerCase().includes(game.name.toLowerCase()) || n.category === "Competitivo",
-  );
-
-  const topPlayer = gamePlayers[0];
   const totalPrizeDisbursed = gameTournaments.reduce((acc, t) => acc + t.prize, 0);
+
+  const hasSearchResults =
+    query.trim().length > 0 &&
+    (searchResults.players.length > 0 ||
+      searchResults.teams.length > 0 ||
+      searchResults.tournaments.length > 0);
+
+  // Top statistics specific to the prompt for Fortnite / Games:
+  // 1. Power Ranked: player with highest points
+  const topPowerRankedPlayer = gamePlayers[0];
+
+  const isFortnite = game.slug === "fortnite";
 
   return (
     <Layout>
       {/* ======================================================== */}
-      {/* 1. BREADCRUMB & HERO BANNER DA DIVISÃO                  */}
+      {/* 1. FORTNITE TRACKER STYLE HERO BANNER (Image 2 Inspired) */}
       {/* ======================================================== */}
-      <section className="relative overflow-hidden border-b border-white/[0.08] bg-[#07090e] py-12 sm:py-16">
-        {/* Accent Glow */}
+      <section className="relative overflow-hidden border-b border-white/[0.08] bg-[#070814] pt-8 pb-16">
+        {/* Dynamic purple/blue cosmic gradient for Fortnite, custom accent for others */}
         <div
-          className={`pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 size-[600px] rounded-full bg-gradient-to-tr ${game.accent} to-transparent opacity-25 blur-3xl`}
+          className={`pointer-events-none absolute inset-0 ${
+            isFortnite
+              ? "bg-gradient-to-b from-[#170e3a] via-[#0d1029] to-[#070814]"
+              : "bg-gradient-to-b from-[#131627] via-[#0d101d] to-[#070814]"
+          }`}
         />
-        <div className="pointer-events-none absolute inset-0 nex-dot-grid opacity-20" />
+        <div className="pointer-events-none absolute inset-0 nex-dot-grid opacity-25" />
+
+        {/* Top subtle ambient light */}
+        <div className="pointer-events-none absolute -top-40 left-1/2 -translate-x-1/2 size-[650px] rounded-full bg-gradient-to-tr from-purple-600/25 via-blue-500/20 to-transparent blur-3xl" />
 
         <div className="relative mx-auto max-w-7xl px-4 sm:px-6">
           {/* Breadcrumb */}
@@ -132,80 +214,298 @@ function GameSlugComponent() {
             <span className="font-bold text-gold">{game.name}</span>
           </div>
 
-          <div className="grid items-center gap-8 lg:grid-cols-12">
-            <div className="lg:col-span-8">
-              <div className="flex flex-wrap items-center gap-3">
-                <span className="flex size-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-xl font-black text-white shadow-xl">
-                  {game.short}
-                </span>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-3xl font-black tracking-tight text-white sm:text-5xl">
-                      {game.name} Angola
-                    </h1>
-                    {game.featured ? (
-                      <span className="inline-flex items-center gap-1 rounded-full border border-gold/40 bg-gold/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-gold">
-                        <Flame className="size-3" /> Tier 1
-                      </span>
-                    ) : null}
-                  </div>
-                  <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground mt-0.5">
-                    Divisão Oficial · {game.genre}
-                  </p>
-                </div>
+          {/* Center Search Header (Tracker.gg Style) */}
+          <div className="mx-auto max-w-3xl text-center py-6 sm:py-10">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-500/30 bg-purple-500/10 px-3.5 py-1 text-[11px] font-bold uppercase tracking-[0.2em] text-purple-300">
+              <Sparkles className="size-3 text-gold" />
+              <span>
+                {isFortnite ? "Angola Fortnite Tracker & Radar" : `${game.name} Tracker Hub`}
+              </span>
+            </div>
+
+            <h1 className="text-3xl font-black uppercase tracking-tight text-white drop-shadow-md sm:text-5xl lg:text-6xl">
+              {isFortnite
+                ? "FIND YOUR FORTNITE STATS"
+                : `FIND YOUR ${game.name.toUpperCase()} STATS`}
+            </h1>
+
+            <p className="mt-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+              Comunidade Gamer de Angola &bull; Dados Verificados
+            </p>
+
+            {/* Multifunctional Search Bar */}
+            <div className="relative mt-8 max-w-2xl mx-auto">
+              <div className="relative flex items-center">
+                <Search className="absolute left-4 size-5 text-muted-foreground" />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder={
+                    isFortnite
+                      ? "Pesquisar por Jogador, Equipa ou Campeonato de Fortnite..."
+                      : `Pesquisar jogadores, equipas ou torneios de ${game.name}...`
+                  }
+                  className="w-full rounded-2xl border border-white/20 bg-white/[0.07] py-4 pl-12 pr-12 text-sm text-white placeholder:text-muted-foreground/70 outline-none backdrop-blur-xl shadow-2xl transition focus:border-gold focus:bg-white/[0.1] focus:ring-2 focus:ring-gold/30"
+                />
+                <button
+                  type="button"
+                  className="absolute right-3.5 flex size-8 items-center justify-center rounded-xl bg-gold/20 text-gold hover:bg-gold hover:text-slate-950 transition"
+                  aria-label="Buscar"
+                >
+                  <ArrowRight className="size-4" />
+                </button>
               </div>
 
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-muted-foreground sm:text-base">
-                {game.description} Todos os confrontos contam para a tabela nacional unificada da
-                temporada 2026.
-              </p>
+              {/* Real-time Search Dropdown (Players, Teams, Tournaments) */}
+              {query.trim().length > 0 && (
+                <div className="absolute left-0 right-0 top-full mt-2 z-50 rounded-2xl border border-white/10 bg-[#0d1020]/95 p-3 text-left shadow-2xl backdrop-blur-2xl max-h-96 overflow-y-auto">
+                  {!hasSearchResults ? (
+                    <div className="py-6 text-center text-xs text-muted-foreground">
+                      Nenhum jogador, equipa ou torneio encontrado para "{query}".
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {/* Players */}
+                      {searchResults.players.length > 0 && (
+                        <div>
+                          <p className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-gold">
+                            Jogadores ({searchResults.players.length})
+                          </p>
+                          <div className="space-y-0.5">
+                            {searchResults.players.map((p) => (
+                              <Link
+                                key={p.username}
+                                to="/players/$username"
+                                params={{ username: p.username }}
+                                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs transition hover:bg-white/[0.06]"
+                              >
+                                <div>
+                                  <span className="font-bold text-white">{p.username}</span>
+                                  <span className="ml-2 font-mono text-[10px] text-muted-foreground">
+                                    {p.gamerTag}
+                                  </span>
+                                </div>
+                                <span className="font-bold text-gold">
+                                  {p.points.toLocaleString("pt-AO")} pts
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
-              <div className="mt-6 flex flex-wrap gap-3">
-                <a
-                  href="#tournaments-section"
-                  className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-primary to-red-600 px-5 py-3 text-xs font-bold uppercase tracking-wider text-white shadow-lg hover:scale-[1.02] transition-all"
-                >
-                  Ver Torneios Ativos <ArrowRight className="size-4" />
-                </a>
+                      {/* Teams */}
+                      {searchResults.teams.length > 0 && (
+                        <div className="border-t border-white/[0.06] pt-2">
+                          <p className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-primary">
+                            Equipas ({searchResults.teams.length})
+                          </p>
+                          <div className="space-y-0.5">
+                            {searchResults.teams.map((t) => (
+                              <Link
+                                key={t.id}
+                                to="/teams/$id"
+                                params={{ id: t.id }}
+                                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs transition hover:bg-white/[0.06]"
+                              >
+                                <span className="font-bold text-white">
+                                  [{t.tag}] {t.name}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {t.city} &bull; {t.titles} títulos
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
+                      {/* Tournaments */}
+                      {searchResults.tournaments.length > 0 && (
+                        <div className="border-t border-white/[0.06] pt-2">
+                          <p className="px-3 py-1 text-[10px] font-black uppercase tracking-widest text-emerald-400">
+                            Campeonatos ({searchResults.tournaments.length})
+                          </p>
+                          <div className="space-y-0.5">
+                            {searchResults.tournaments.map((t) => (
+                              <Link
+                                key={t.id}
+                                to="/tournaments/$id"
+                                params={{ id: t.id }}
+                                className="flex items-center justify-between rounded-xl px-3 py-2 text-xs transition hover:bg-white/[0.06]"
+                              >
+                                <span className="font-bold text-white truncate pr-2">{t.name}</span>
+                                <span className="font-bold text-gold whitespace-nowrap">
+                                  {formatKz(t.prize)}
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Sub-label under search */}
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-3 text-[11px] text-muted-foreground">
+                <span>Pesquisa por Gamertag/ID, Nome ou Equipa</span>
+                <span>&bull;</span>
+                <span className="flex items-center gap-1 font-semibold text-white">
+                  <Users className="size-3 text-gold" />
+                  Rastreando +{game.players.toLocaleString("pt-AO")} Atletas em Angola
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* ======================================================== */}
+          {/* 2. THE THREE LEADERBOARDS #1 CARDS (As shown in Image 2)  */}
+          {/* ======================================================== */}
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {/* Card 1: 2026 AG POWER RANK */}
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d1020]/90 shadow-2xl backdrop-blur-xl transition hover:border-gold/50">
+              {/* Card Header Strip: Yellow/Gold */}
+              <div className="flex items-center justify-between bg-gradient-to-r from-amber-500 via-gold to-yellow-400 px-4 py-2 text-slate-950 font-black">
+                <span className="text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <Trophy className="size-3.5" /> 2026 AG POWER RANK
+                </span>
                 <a
                   href="#rankings-section"
-                  className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-5 py-3 text-xs font-bold uppercase tracking-wider text-white hover:border-gold/40 hover:bg-white/[0.08] transition-all"
+                  className="text-[10px] uppercase tracking-widest hover:underline"
                 >
-                  <Trophy className="size-4 text-gold" /> Tabela de Ranking
+                  Ver Todos
                 </a>
+              </div>
+
+              {/* Card Body */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-500 to-gold text-slate-950 font-black text-sm shadow-md">
+                    <Crown className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black text-white hover:text-gold transition">
+                      {topPowerRankedPlayer ? (
+                        <Link
+                          to="/players/$username"
+                          params={{ username: topPowerRankedPlayer.username }}
+                        >
+                          {topPowerRankedPlayer.username}
+                        </Link>
+                      ) : (
+                        "Em disputa"
+                      )}
+                    </h3>
+                    <p className="text-xs font-bold text-gold">
+                      PR {topPowerRankedPlayer?.points.toLocaleString("pt-AO")} pts
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {topPowerRankedPlayer?.team ?? "Agente Livre"} &bull;{" "}
+                      {topPowerRankedPlayer?.province}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-3xl font-black text-white/20">#1</span>
+                </div>
               </div>
             </div>
 
-            {/* Division KPI Overview Card */}
-            <div className="lg:col-span-4">
-              <div className="nex-glass-card p-6 border-white/10">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-gold mb-4 flex items-center gap-1.5">
-                  <Sparkles className="size-3.5" /> Estatísticas da Modalidade
-                </p>
+            {/* Card 2: SEASON SOLO WINS / KILLS */}
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d1020]/90 shadow-2xl backdrop-blur-xl transition hover:border-cyan-500/50">
+              {/* Card Header Strip: Cyan/Blue */}
+              <div className="flex items-center justify-between bg-gradient-to-r from-cyan-500 via-sky-400 to-blue-500 px-4 py-2 text-slate-950 font-black">
+                <span className="text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <Crosshair className="size-3.5" /> SEASON SOLO WINS & KILLS
+                </span>
+                <a
+                  href="#rankings-section"
+                  className="text-[10px] uppercase tracking-widest hover:underline"
+                >
+                  Ver Todos
+                </a>
+              </div>
 
-                <div className="space-y-3.5 text-xs">
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
-                    <span className="text-muted-foreground">Jogadores Ativos</span>
-                    <span className="font-bold text-white">{game.players} atletas</span>
+              {/* Card Body */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 text-slate-950 font-black text-sm shadow-md">
+                    <Flame className="size-6 text-white" />
                   </div>
+                  <div>
+                    <h3 className="text-base font-black text-white hover:text-cyan-400 transition">
+                      {topSoloKillsPlayer ? (
+                        <Link
+                          to="/players/$username"
+                          params={{ username: topSoloKillsPlayer.username }}
+                        >
+                          {topSoloKillsPlayer.username}
+                        </Link>
+                      ) : (
+                        "Em disputa"
+                      )}
+                    </h3>
+                    <p className="text-xs font-bold text-cyan-400">
+                      W {topSoloKillsPlayer?.wins} &bull; Top 3: {topSoloKillsPlayer?.top3}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {topSoloKillsPlayer?.team ?? "Agente Livre"} &bull;{" "}
+                      {topSoloKillsPlayer?.province}
+                    </p>
+                  </div>
+                </div>
 
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
-                    <span className="text-muted-foreground">Torneios Oficiais</span>
-                    <span className="font-bold text-white">{game.tournaments} campeonatos</span>
-                  </div>
+                <div className="text-right">
+                  <span className="text-3xl font-black text-white/20">#1</span>
+                </div>
+              </div>
+            </div>
 
-                  <div className="flex items-center justify-between border-b border-white/[0.06] pb-2.5">
-                    <span className="text-muted-foreground">Premiação Acumulada</span>
-                    <span className="font-black text-gold">{formatKz(totalPrizeDisbursed)}</span>
-                  </div>
+            {/* Card 3: RANKED BATTLE ROYALE (TOP TEAM) */}
+            <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#0d1020]/90 shadow-2xl backdrop-blur-xl transition hover:border-purple-500/50">
+              {/* Card Header Strip: Purple */}
+              <div className="flex items-center justify-between bg-gradient-to-r from-purple-600 via-fuchsia-500 to-indigo-600 px-4 py-2 text-white font-black">
+                <span className="text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                  <Swords className="size-3.5" /> RANKED BATTLE ROYALE (TOP TEAM)
+                </span>
+                <a
+                  href="#teams-section"
+                  className="text-[10px] uppercase tracking-widest hover:underline"
+                >
+                  Ver Todos
+                </a>
+              </div>
 
-                  <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Líder Atual (#1)</span>
-                    <span className="font-bold text-emerald-400">
-                      {topPlayer ? `${topPlayer.username} (${topPlayer.points} pts)` : "Em disputa"}
-                    </span>
+              {/* Card Body */}
+              <div className="flex items-center justify-between p-4">
+                <div className="flex items-center gap-3">
+                  <div className="relative flex size-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-purple-500 to-indigo-700 text-white font-black text-sm shadow-md">
+                    <Shield className="size-6 text-gold" />
                   </div>
+                  <div>
+                    <h3 className="text-base font-black text-white hover:text-purple-300 transition">
+                      {topTournamentTeam ? (
+                        <Link to="/teams/$id" params={{ id: topTournamentTeam.id }}>
+                          [{topTournamentTeam.tag}] {topTournamentTeam.name}
+                        </Link>
+                      ) : (
+                        "Em disputa"
+                      )}
+                    </h3>
+                    <p className="text-xs font-bold text-purple-300">
+                      {topTournamentTeam?.titles} Campeonatos Vencidos
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {topTournamentTeam?.city} &bull; Fundada em {topTournamentTeam?.founded}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <span className="text-3xl font-black text-white/20">#1</span>
                 </div>
               </div>
             </div>
@@ -214,7 +514,7 @@ function GameSlugComponent() {
       </section>
 
       {/* ======================================================== */}
-      {/* 2. TORNEIOS & COMPETIÇÕES DESTE JOGO                     */}
+      {/* 3. TORNEIOS & COMPETIÇÕES DESTE JOGO                     */}
       {/* ======================================================== */}
       <section id="tournaments-section" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
         <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
@@ -225,7 +525,8 @@ function GameSlugComponent() {
             </div>
             <h2 className="text-2xl font-black text-white sm:text-3xl">Torneios de {game.name}</h2>
             <p className="mt-1 text-xs text-muted-foreground">
-              Participa nos cash cups semanais e eventos classificatórios com chaves oficiais.
+              Participa nos cash cups semanais e eventos classificatórios com chaves oficiais em
+              Angola.
             </p>
           </div>
 
@@ -272,7 +573,7 @@ function GameSlugComponent() {
                           <Calendar className="size-3" /> Data:
                         </span>
                         <span className="font-semibold text-white">
-                          {new Date(t.date).toLocaleDateString("pt-AO")} · {t.time}
+                          {new Date(t.date).toLocaleDateString("pt-AO")} &bull; {t.time}
                         </span>
                       </div>
                       <div className="flex items-center justify-between">
@@ -317,7 +618,7 @@ function GameSlugComponent() {
       </section>
 
       {/* ======================================================== */}
-      {/* 3. TABELA OFICIAL DE RANKINGS DO JOGO (FINTECH ELO)     */}
+      {/* 4. TABELA OFICIAL DE RANKINGS DO JOGO (FINTECH ELO)     */}
       {/* ======================================================== */}
       <section id="rankings-section" className="border-t border-white/[0.08] bg-[#090b12] py-16">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
@@ -451,9 +752,9 @@ function GameSlugComponent() {
       </section>
 
       {/* ======================================================== */}
-      {/* 4. EQUIPAS DA MODALIDADE & NOTÍCIAS                      */}
+      {/* 5. EQUIPAS DA MODALIDADE & NOTÍCIAS                      */}
       {/* ======================================================== */}
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
+      <section id="teams-section" className="mx-auto max-w-7xl px-4 py-16 sm:px-6">
         <div className="grid gap-10 lg:grid-cols-12">
           {/* Teams Column */}
           <div className="lg:col-span-6">
@@ -483,7 +784,7 @@ function GameSlugComponent() {
                           {team.name}
                         </h4>
                         <p className="text-[10px] text-muted-foreground">
-                          {team.city} · {team.titles} Título(s)
+                          {team.city} &bull; {team.titles} Título(s) em Torneios
                         </p>
                       </div>
                     </div>

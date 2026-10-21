@@ -8,7 +8,24 @@
 export const IS_DEMO_DATA = true;
 
 export type GameSlug =
-  "fortnite" | "ea-sports-fc" | "free-fire" | "call-of-duty" | "valorant" | "pubg";
+  | "fortnite"
+  | "ea-sports-fc"
+  | "free-fire"
+  | "call-of-duty"
+  | "valorant"
+  | "pubg"
+  | "league-of-legends"
+  | "marvel-rivals"
+  | "rainbow-six-siege"
+  | "deadlock"
+  | "roblox"
+  | "battlefield-6"
+  | "apex-legends"
+  | "rocket-league"
+  | "splitgate"
+  | "counter-strike-2"
+  | "gta-6"
+  | "halo-infinite";
 
 export type Game = {
   slug: GameSlug;
@@ -20,6 +37,8 @@ export type Game = {
   featured?: boolean;
   accent: string;
   description: string;
+  coverUrl?: string;
+  isNew?: boolean;
 };
 
 export const games: Game[] = [
@@ -34,17 +53,7 @@ export const games: Game[] = [
     accent: "from-primary/40",
     description:
       "O jogo com maior cena competitiva em Angola. Cash cups semanais, ranking nacional e classificação para as finais Angola Gamers.",
-  },
-  {
-    slug: "ea-sports-fc",
-    name: "EA Sports FC",
-    short: "FC",
-    genre: "Desporto",
-    players: 388,
-    tournaments: 16,
-    accent: "from-emerald-500/30",
-    description:
-      "A liga angolana de futebol virtual, com jogos 1v1 em consola e PC e uma final presencial em Luanda.",
+    coverUrl: "/games/fortnite.jpg",
   },
   {
     slug: "free-fire",
@@ -56,36 +65,30 @@ export const games: Game[] = [
     accent: "from-orange-500/30",
     description:
       "O mobile domina Angola. Squads de todas as províncias competem em ligas mensais totalmente jogadas em telemóvel.",
+    coverUrl: "/games/free-fire.jpg",
   },
   {
-    slug: "call-of-duty",
-    name: "Call of Duty",
-    short: "COD",
-    genre: "FPS",
-    players: 275,
-    tournaments: 9,
-    accent: "from-amber-500/30",
-    description: "Warzone e Multiplayer competitivo, com torneios 4v4 e séries eliminatórias.",
+    slug: "ea-sports-fc",
+    name: "EA Sports FC / FIFA",
+    short: "FIFA",
+    genre: "Desporto",
+    players: 388,
+    tournaments: 16,
+    accent: "from-emerald-500/30",
+    description:
+      "A liga angolana de futebol virtual, com jogos 1v1 em consola e PC e uma final presencial em Luanda.",
+    coverUrl: "/games/ea-sports-fc.jpg",
   },
   {
     slug: "valorant",
     name: "Valorant",
     short: "VAL",
     genre: "Tactical FPS",
-    players: 164,
-    tournaments: 6,
+    players: 480,
+    tournaments: 18,
     accent: "from-rose-500/30",
-    description: "Cena em crescimento, com equipas 5v5 a disputar a primeira temporada nacional.",
-  },
-  {
-    slug: "pubg",
-    name: "PUBG",
-    short: "PUBG",
-    genre: "Battle Royale",
-    players: 121,
-    tournaments: 4,
-    accent: "from-sky-500/30",
-    description: "Competições squad em PC e mobile com pontuação por colocação e eliminações.",
+    description: "Cena em crescimento, com equipas 5v5 a disputar a temporada oficial.",
+    coverUrl: "https://images.igdb.com/igdb/image/upload/t_cover_big/cocqbp.jpg",
   },
 ];
 
@@ -99,6 +102,19 @@ export const provinces = [
   "Malanje",
   "Uíge",
 ];
+
+export type FortniteModeStats = {
+  matches: number;
+  wins: number;
+  winRate: number;
+  kills: number;
+  kd: number;
+  top3_5_10: number; // Top 10 for solo, Top 5 for duos, Top 3 for squads
+  top6_12_25: number;
+  avgTime: string;
+  trnRating: number;
+  score: number;
+};
 
 export type Player = {
   username: string;
@@ -117,6 +133,40 @@ export type Player = {
   badges: string[];
   socials: { platform: string; handle: string }[];
   form: { month: string; points: number }[];
+  avatarUrl?: string;
+  platform?: "PC" | "PlayStation" | "Xbox" | "Switch" | "Mobile";
+  country?: string;
+  trnRating?: number;
+  powerRanking?: number;
+  powerRankingPoints?: number;
+  earningsUSD?: number;
+  fortniteStats?: {
+    overall: {
+      matches: number;
+      wins: number;
+      winRate: number;
+      kills: number;
+      kd: number;
+      score: number;
+      timePlayed: string;
+      trnRating: number;
+    };
+    modes: {
+      solo: FortniteModeStats;
+      duos: FortniteModeStats;
+      squads: FortniteModeStats;
+      ranked: FortniteModeStats;
+    };
+    recentMatches: Array<{
+      id: string;
+      date: string;
+      playlist: "Solo" | "Duos" | "Squads" | "Ranked Battle Royale";
+      placement: number;
+      kills: number;
+      timeAlive: string;
+      score: number;
+    }>;
+  };
 };
 
 const months = ["Mar", "Abr", "Mai", "Jun", "Jul", "Ago"];
@@ -231,34 +281,203 @@ const rawPlayers: Array<
 ];
 
 export const players: Player[] = rawPlayers
-  .map(([username, name, team, game, province, points, wins, top3, tournaments, prize], i) => ({
-    username,
-    name,
-    team,
-    game,
-    province,
-    points,
-    wins,
-    top3,
-    tournaments,
-    prize,
-    rank: 0,
-    gamerTag: `ANG#${String(100124 + i * 37).padStart(6, "0")}`,
-    bio: `Jogador competitivo de ${game.replace(/-/g, " ")} baseado em ${province}. Compete no circuito Angola Gamers desde 2024.`,
-    badges:
-      i === 0
-        ? ["ANGOLA GAMERS CHAMPION", "TOURNAMENT WINNER", "PRO PLAYER"]
-        : i < 3
-          ? ["TOURNAMENT WINNER", "TOP PLAYER"]
-          : i < 8
-            ? ["TOP PLAYER", "RISING STAR"]
-            : ["COMMUNITY LEGEND"],
-    socials: [
-      { platform: "Instagram", handle: `@${username.toLowerCase()}` },
-      { platform: "Twitch", handle: `twitch.tv/${username.toLowerCase()}` },
-    ],
-    form: makeForm(i + 1),
-  }))
+  .map(([username, name, team, game, province, points, wins, top3, tournaments, prize], i) => {
+    const isFortnite = game === "fortnite";
+    const totalMatches = isFortnite ? 1420 + i * 180 : 350 + i * 40;
+    const totalWins = wins * 14 + i * 3;
+    const winRate = Number(((totalWins / totalMatches) * 100).toFixed(1));
+    const totalKills = Math.round(totalMatches * (2.8 + (i % 3) * 0.4));
+    const kd = Number((totalKills / Math.max(1, totalMatches - totalWins)).toFixed(2));
+    const trnRating = 2450 + (points % 2400);
+
+    const fortniteStats = isFortnite
+      ? {
+          overall: {
+            matches: totalMatches,
+            wins: totalWins,
+            winRate,
+            kills: totalKills,
+            kd,
+            score: totalKills * 35 + totalWins * 100,
+            timePlayed: `${Math.round((totalMatches * 14) / 60)}h ${Math.round((totalMatches * 14) % 60)}m`,
+            trnRating,
+          },
+          modes: {
+            solo: {
+              matches: Math.round(totalMatches * 0.35),
+              wins: Math.round(totalWins * 0.28),
+              winRate: Number(
+                (
+                  (Math.round(totalWins * 0.28) / Math.max(1, Math.round(totalMatches * 0.35))) *
+                  100
+                ).toFixed(1),
+              ),
+              kills: Math.round(totalKills * 0.32),
+              kd: Number(
+                (
+                  Math.round(totalKills * 0.32) /
+                  Math.max(1, Math.round(totalMatches * 0.35) - Math.round(totalWins * 0.28))
+                ).toFixed(2),
+              ),
+              top3_5_10: Math.round(totalMatches * 0.18),
+              top6_12_25: Math.round(totalMatches * 0.38),
+              avgTime: "12m 45s",
+              trnRating: trnRating - 120,
+              score: Math.round(totalKills * 0.32 * 35),
+            },
+            duos: {
+              matches: Math.round(totalMatches * 0.4),
+              wins: Math.round(totalWins * 0.45),
+              winRate: Number(
+                (
+                  (Math.round(totalWins * 0.45) / Math.max(1, Math.round(totalMatches * 0.4))) *
+                  100
+                ).toFixed(1),
+              ),
+              kills: Math.round(totalKills * 0.42),
+              kd: Number(
+                (
+                  Math.round(totalKills * 0.42) /
+                  Math.max(1, Math.round(totalMatches * 0.4) - Math.round(totalWins * 0.45))
+                ).toFixed(2),
+              ),
+              top3_5_10: Math.round(totalMatches * 0.24),
+              top6_12_25: Math.round(totalMatches * 0.45),
+              avgTime: "14m 10s",
+              trnRating,
+              score: Math.round(totalKills * 0.42 * 35),
+            },
+            squads: {
+              matches: Math.round(totalMatches * 0.25),
+              wins: Math.round(totalWins * 0.27),
+              winRate: Number(
+                (
+                  (Math.round(totalWins * 0.27) / Math.max(1, Math.round(totalMatches * 0.25))) *
+                  100
+                ).toFixed(1),
+              ),
+              kills: Math.round(totalKills * 0.26),
+              kd: Number(
+                (
+                  Math.round(totalKills * 0.26) /
+                  Math.max(1, Math.round(totalMatches * 0.25) - Math.round(totalWins * 0.27))
+                ).toFixed(2),
+              ),
+              top3_5_10: Math.round(totalMatches * 0.22),
+              top6_12_25: Math.round(totalMatches * 0.42),
+              avgTime: "15m 30s",
+              trnRating: trnRating + 85,
+              score: Math.round(totalKills * 0.26 * 35),
+            },
+            ranked: {
+              matches: Math.round(totalMatches * 0.3),
+              wins: Math.round(totalWins * 0.22),
+              winRate: Number(
+                (
+                  (Math.round(totalWins * 0.22) / Math.max(1, Math.round(totalMatches * 0.3))) *
+                  100
+                ).toFixed(1),
+              ),
+              kills: Math.round(totalKills * 0.3),
+              kd: Number(
+                (
+                  Math.round(totalKills * 0.3) /
+                  Math.max(1, Math.round(totalMatches * 0.3) - Math.round(totalWins * 0.22))
+                ).toFixed(2),
+              ),
+              top3_5_10: Math.round(totalMatches * 0.16),
+              top6_12_25: Math.round(totalMatches * 0.35),
+              avgTime: "16m 05s",
+              trnRating: trnRating + 140,
+              score: Math.round(totalKills * 0.3 * 40),
+            },
+          },
+          recentMatches: [
+            {
+              id: `m-${i}-1`,
+              date: "Há 42 minutos",
+              playlist: "Ranked Battle Royale" as const,
+              placement: 1,
+              kills: 9,
+              timeAlive: "21m 15s",
+              score: 485,
+            },
+            {
+              id: `m-${i}-2`,
+              date: "Há 2 horas",
+              playlist: "Duos" as const,
+              placement: 3,
+              kills: 6,
+              timeAlive: "18m 40s",
+              score: 340,
+            },
+            {
+              id: `m-${i}-3`,
+              date: "Há 4 horas",
+              playlist: "Solo" as const,
+              placement: 8,
+              kills: 4,
+              timeAlive: "14m 20s",
+              score: 220,
+            },
+            {
+              id: `m-${i}-4`,
+              date: "Ontem",
+              playlist: "Squads" as const,
+              placement: 2,
+              kills: 7,
+              timeAlive: "19m 50s",
+              score: 390,
+            },
+            {
+              id: `m-${i}-5`,
+              date: "Ontem",
+              playlist: "Solo" as const,
+              placement: 14,
+              kills: 2,
+              timeAlive: "9m 35s",
+              score: 110,
+            },
+          ],
+        }
+      : undefined;
+
+    return {
+      username,
+      name,
+      team,
+      game,
+      province,
+      points,
+      wins,
+      top3,
+      tournaments,
+      prize,
+      rank: 0,
+      gamerTag: `ANG#${String(100124 + i * 37).padStart(6, "0")}`,
+      bio: `Jogador competitivo de ${game.replace(/-/g, " ")} baseado em ${province}. Compete no circuito Angola Gamers desde 2024.`,
+      badges:
+        i === 0
+          ? ["ANGOLA GAMERS CHAMPION", "TOURNAMENT WINNER", "PRO PLAYER"]
+          : i < 3
+            ? ["TOURNAMENT WINNER", "TOP PLAYER"]
+            : i < 8
+              ? ["TOP PLAYER", "RISING STAR"]
+              : ["COMMUNITY LEGEND"],
+      socials: [
+        { platform: "Instagram", handle: `@${username.toLowerCase()}` },
+        { platform: "Twitch", handle: `twitch.tv/${username.toLowerCase()}` },
+      ],
+      form: makeForm(i + 1),
+      platform: "PC" as const,
+      country: "Angola",
+      trnRating,
+      powerRanking: i + 1,
+      powerRankingPoints: points * 2,
+      earningsUSD: Math.round(prize / 910),
+      fortniteStats,
+    };
+  })
   .map((p, _i, arr) => ({
     ...p,
     rank:
